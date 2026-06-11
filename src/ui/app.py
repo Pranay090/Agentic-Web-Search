@@ -62,30 +62,35 @@ def _split_answer(answer: str) -> tuple[str, list[str]]:
     return answer, []
 
 
-def _invoke_graph(query: str) -> dict:
+def _invoke_graph(query: str, history: list) -> dict:
     return graph.invoke({
-        "messages":             [{"role": "user", "content": query}],
-        "query":                query,
-        "resolved_query":       "",
-        "intent":               "",
-        "needs_clarification":  False,
+        "messages":                [{"role": "user", "content": query}],
+        "query":                   query,
+        "resolved_query":          "",
+        "intent":                  "",
+        "needs_clarification":     False,
         "clarification_questions": [],
-        "conversation_history": _conversation_history(),
-        "raw_results":          [],
-        "valid_results":        [],
-        "ranked_results":       [],
-        "summary_cards":        [],
-        "next_actions":         [],
-        "answer":               "",
+        "conversation_history":    history,
+        "raw_results":             [],
+        "valid_results":           [],
+        "ranked_results":          [],
+        "summary_cards":           [],
+        "next_actions":            [],
+        "answer":                  "",
     })
 
 
 def _run_query(query: str) -> None:
     """Run the graph for a query; handle clarification or answer."""
+    # Capture history BEFORE appending the new user message.
+    # If we capture after, history[-1] is always the current user turn,
+    # so check_clarification never sees the previous assistant message
+    # and re-triggers clarification on every combined answer.
+    history = _conversation_history()
     st.session_state.messages.append({"role": "user", "content": query})
 
     with st.spinner("Thinking…"):
-        result = _invoke_graph(query)
+        result = _invoke_graph(query, history)
 
     # ── Clarification needed ──────────────────────────────────────────────────
     if result.get("needs_clarification"):
